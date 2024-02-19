@@ -1,4 +1,3 @@
-#Server.PY #
 import socket
 import ssl
 from datetime import datetime
@@ -13,7 +12,6 @@ class Server():
         self.priority = priority.lower()
         self.history = []
         self.alert = False
-
     def check_connection(self):
         msg = ""
         success = False
@@ -21,12 +19,13 @@ class Server():
         try:
             if self.connection == "plain":
                 socket.create_connection((self.name, self.port), timeout=10)
-                msg = f"{self.name} is Up on port {self.port} with connection type {self.connection}"
+                msg = f"{self.name} is up. On port {self.port} with {self.connection}"
                 success = True
                 self.alert = False
-            elif self.connecion == "ssl":
-                ssl.wrap_socket(socket.create_connection((self.name, self.port), timeout=10))
-                msg = f"{self.name} is Up on port {self.port} with {self.connection}"
+            elif self.connection == "ssl":
+                ssl.wrap_socket(socket.create_connection(
+                    (self.name, self.port), timeout=10))
+                msg = f"{self.name} is up. On port {self.port} with {self.connection}"
                 success = True
                 self.alert = False
             else:
@@ -40,4 +39,36 @@ class Server():
             msg = f"server: {self.name} {e}"
         except Exception as e:
             msg = f"No Clue??: {e}"
+            if success == False and self.alert == False:
+            # Send Alert
+                self.alert = True
+                email_alert(self.name, f"{msg}\n{now}", "mdalceggio@gmail.com")
+                self.create_history(msg, success, now)
+    def ping(self):
+        try:
+            output = subprocess.check_output("ping -{} 1 {}".format('n' if platform.system(
+            ).lower() == "windows" else 'c', self.name), shell=True, universal_newlines=True)
+            if 'unreachable' in output:
+                return False
+            else:
+                return True
+        except Exception:
+            return False
+if __name__ == "__main__":
+    try:
+        servers = pickle.load(open("servers.pickle", "rb"))
+    except:
+        servers = [
+            Server("reddit.com", 80, "plain", "high"),
+            Server("msn.com", 80, "plain", "high"),
+            Server("smtp.gmail.com", 465, "ssl", "high"),
+            Server("192.168.1.164", 80, "plain", "high"),
+            Server("yahoo.com", 80, "plain", "high"),
+        ]
+    for server in servers:
+        server.check_connection()
+        print(len(server.history))
+        #print(server.history[-1])
+        print(server.history)
 
+    pickle.dump(servers, open("servers.pickle", "wb"))
